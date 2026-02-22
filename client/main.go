@@ -31,12 +31,12 @@ func main() {
 
 	client := pb.NewMetricsServiceClient(conn)
 
-	// We use a WaitGroup to wait for all 120 agents to finish streaming
+	// We use a WaitGroup to wait for all agents to finish streaming
 	var wg sync.WaitGroup
 
 	log.Printf("Starting %d concurrent agents...", numAgents)
 
-	// 2. Spin up 120 goroutines
+	// 2. Spin up goroutines
 	for i := 1; i <= numAgents; i++ {
 		wg.Add(1)
 		go simulateAgent(i, client, &wg)

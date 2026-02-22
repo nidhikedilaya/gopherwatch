@@ -28,7 +28,7 @@ func InitDB(dsn string) *sql.DB {
 
 // SaveAlert inserts a triggered alert into the database
 func SaveAlert(db *sql.DB, serviceName, metric string, value float64) {
-	// SQL Best Practice: Use context.WithTimeout to prevent the alerting engine from hanging [cite: 58]
+	// SQL Best Practice: Use context.WithTimeout to prevent the alerting engine from hanging
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 

@@ -34,15 +34,15 @@ type AlertHistory struct {
 	TriggeredAt time.Time `json:"triggered_at"`
 }
 
-// handleGetStatus returns the live health of all registered services [cite: 36, 38]
+// handleGetStatus returns the live health of all registered services
 func handleGetStatus(engine *Engine) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Thread-safe read from the global state map [cite: 45]
+		// Thread-safe read from the global state map
 		engine.mu.RLock()
 		defer engine.mu.RUnlock()
 
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK) // Fulfills rubric: Returns proper HTTP status codes (200 OK)
+		w.WriteHeader(http.StatusOK) //  Returns proper HTTP status codes (200 OK)
 
 		json.NewEncoder(w).Encode(engine.state)
 	}
@@ -51,7 +51,7 @@ func handleGetStatus(engine *Engine) http.HandlerFunc {
 // handleGetAlertsHistory returns past alerts from MySQL
 func handleGetAlertsHistory(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Context Propagation: Pass-through of timeout from the REST layer to the DB layer [cite: 49]
+		// Context Propagation: Pass-through of timeout from the REST layer to the DB layer
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 
@@ -78,10 +78,10 @@ func handleGetAlertsHistory(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// metricsServer implements the gRPC service and holds a reference to our Engine
+// metricsServer implements the gRPC service and holds a reference to the Engine
 type metricsServer struct {
 	pb.UnimplementedMetricsServiceServer
-	engine *Engine // The engine handles the dispatcher channel and state tracking [cite: 32, 34]
+	engine *Engine // The engine handles the dispatcher channel and state tracking
 }
 
 // RegisterAgent handles the unary request
@@ -107,7 +107,7 @@ func (s *metricsServer) RegisterAgent(ctx context.Context, info *pb.AgentInfo) (
 	}, nil
 }
 
-// SendMetrics receives the stream and pushes metrics to the Dispatcher channel [cite: 32]
+// SendMetrics receives the stream and pushes metrics to the Dispatcher channel
 func (s *metricsServer) SendMetrics(stream pb.MetricsService_SendMetricsServer) error {
 	// Extract Service-ID from context (set by your interceptor)
 	md, ok := metadata.FromIncomingContext(stream.Context())
@@ -123,7 +123,7 @@ func (s *metricsServer) SendMetrics(stream pb.MetricsService_SendMetricsServer) 
 	for {
 		report, err := stream.Recv()
 
-		// Correctly handle io.EOF and stream errors [cite: 43]
+		// Correctly handle io.EOF and stream errors
 		if err == io.EOF {
 			slog.Info("Stream closed by client", "service_id", serviceID)
 			s.engine.RemoveService(serviceID)
@@ -139,8 +139,8 @@ func (s *metricsServer) SendMetrics(stream pb.MetricsService_SendMetricsServer) 
 
 		reportCount++
 
-		// FAN-OUT PATTERN: Send the metric to the Dispatcher channel [cite: 32]
-		// This prevents one slow rule evaluation from backing up the whole metrics stream [cite: 44]
+		// FAN-OUT PATTERN: Send the metric to the Dispatcher channel
+		// This prevents one slow rule evaluation from backing up the whole metrics stream
 		s.engine.dispatcher <- ServiceMetric{
 			ServiceID: serviceID,
 			Report:    report,
@@ -164,7 +164,6 @@ func main() {
 	// 3. Construct the DSN dynamically
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local",
 		dbUser, dbPass, dbHost, dbPort, dbName)
-	// dsn := "root:73550700@tcp(127.0.0.1:3306)/gopherwatch?parseTime=true&loc=Local"
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		log.Fatalf("Failed to open DB: %v", err)
@@ -256,20 +255,3 @@ func main() {
 
 	slog.Info("GopherWatch shutdown complete. Goodbye!")
 }
-
-/// Create DB
-// -- 1. Create the database
-// CREATE DATABASE IF NOT EXISTS gopherwatch;
-
-// -- 2. Tell MySQL you want to use this new database
-// USE gopherwatch;
-
-// -- 3. Create the alerts table with the required schema and indexes
-// CREATE TABLE alerts (
-//     id INT AUTO_INCREMENT PRIMARY KEY,
-//     service_name VARCHAR(255) NOT NULL,
-//     metric VARCHAR(50) NOT NULL,
-//     metric_value FLOAT NOT NULL,
-//     triggered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-//     INDEX idx_service_time (service_name, triggered_at)
-// );
