@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+// Defines the Go package path for the generated code
+option go_package = "gopherwatch/proto";
+
+package metrics;
+
+// The MetricsService definition
+service MetricsService {
+  // 1. The new Unary RPC
+  rpc RegisterAgent(AgentInfo) returns (ConfigResponse);
+  
+  // 2. The existing Streaming RPC
+  rpc SendMetrics(stream MetricReport) returns (Summary);
+}
+
+// Data sent by the agent during registration
+message AgentInfo {
+  string os_version = 1;
+  string agent_version = 2;
+}
+
+// Configuration sent back by the server
+message ConfigResponse {
+  int32 report_interval_ms = 1;
+  bool active = 2;
+}
+
+// The data structure for the incoming hardware metrics
+message MetricReport {
+  double cpu_usage = 1;
+  double memory_usage = 2;
+  int32 request_count = 3;
+  string timestamp = 4;
+}
+
+// The server's final response after the stream closes
+message Summary {
+  int32 total_reports_received = 1;
+  string status = 2;
+}
